@@ -1,0 +1,334 @@
+<!--
+  Copyright (C) 2020 The Project Lombok Authors.
+  
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+  
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+  
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  THE SOFTWARE.
+-->
+<project name="lombok-website" basedir=".." default="website" xmlns:ivy="antlib:com.zwitserloot.ivyplusplus">
+	<description>
+This buildfile is part of projectlombok.org. It is responsible for building the website and all website-related aspects,
+such as applying the templates to produce the website, converting the changelog into HTML, and creating javadoc.
+	</description>
+	
+	<property name="web.root" value="https://projectlombok.org/" />
+	<property name="SNIPPET_TAB_STOP" value="2" />
+	
+	<target name="-website.clean">
+		<delete dir="build/website" quiet="true" />
+	</target>
+	
+	<!-- Fetches the current (latest) lombok available from projectlombok.org, tracking this 'latest available version' in ant properties -->
+	<target name="-website.fetch-version" depends="compile.support">
+		<java classname="lombok.website.FetchCurrentVersion" outputproperty="lombok.version.live" failonerror="true">
+			<classpath>
+				<path refid="cp.buildtools" />
+				<pathelement location="build/support" />
+			</classpath>
+			<arg value="${web.root}" />
+			<arg value="base" />
+		</java>
+		<java classname="lombok.website.FetchCurrentVersion" outputproperty="lombok.fullversion.live" failonerror="true">
+			<classpath>
+				<path refid="cp.buildtools" />
+				<pathelement location="build/support" />
+			</classpath>
+			<arg value="${web.root}" />
+			<arg value="full" />
+		</java>
+	</target>
+	
+	<target name="website.print-live-version" depends="-website.fetch-version" description="Print the current version of lombok available from projectlombok.org">
+		<echo>Live version: ${lombok.version.live}</echo>
+		<echo>Live full versionstring : ${lombok.fullversion.live}</echo>
+	</target>
+	
+	<target name="changelog.build" depends="version, deps, compile.support" description="Turns the current changelog (doc/changelog.markdown) into HTML">
+		<mkdir dir="build/website" />
+		<java classname="lombok.website.WebsiteMaker" failonerror="true">
+			<classpath>
+				<path refid="cp.buildtools" />
+				<pathelement location="build/support" />
+			</classpath> 
+			<arg value="${web.root}" />
+			<arg value="${lombok.version}" />
+			<arg value="${lombok.fullversion}" />
+			<arg value="changelog" />
+		</java>
+	</target>
+	
+	<macrodef name="website.make">
+		<attribute name="version" />
+		<attribute name="fullversion" />
+		<attribute name="cmd" />
+		<sequential>
+			<mkdir dir="build/website" />
+			<copy todir="build/website">
+				<fileset dir="website/resources" />
+				<fileset dir="." includes="LICENSE" />
+			</copy>
+			
+			<java classname="lombok.website.WebsiteMaker" failonerror="true">
+				<classpath>
+					<path refid="cp.buildtools" />
+					<pathelement location="build/support" />
+				</classpath>
+				<arg value="${web.root}" />
+				<arg value="@{version}" />
+				<arg value="@{fullversion}" />
+				<arg value="@{cmd}" />
+			</java>
+		</sequential>
+	</macrodef>
+	
+	<target name="website.release-build" depends="version, -website.clean, compile.support">
+		<website.make version="${lombok.version}" fullversion="${lombok.fullversion}" cmd="all-newrelease" />
+	</target>
+	
+	<target name="website.build" depends="-website.fetch-version, -website.clean, compile.support" description="Builds the website based on current live version">
+		<website.make version="${lombok.version.live}" fullversion="${lombok.fullversion.live}" cmd="all" />
+	</target>
+	
+	<target name="website.open" depends="website.build, compile.support" description="Builds the website, then serves it locally, opening a browser.">
+		<local name="dir.build.website" />
+		<property name="dir.build.website" location="build/website" />
+		<java classname="lombok.website.RunSite" failonerror="true">
+			<classpath>
+				<path refid="cp.buildtools" />
+				<pathelement location="build/support" />
+			</classpath>
+			<arg value="${dir.build.website}" />
+			<arg value="open" />
+		</java>
+	</target>
+	
+	<target name="website.print-all-versions" depends="compile.support">
+		<java classname="lombok.website.WebsiteMaker" failonerror="true">
+			<classpath>
+				<path refid="cp.buildtools" />
+				<pathelement location="build/support" />
+			</classpath>
+			<arg value="${web.root}" />
+			<arg value="1" />
+			<arg value="1" />
+			<arg value="print-allversions" />
+		</java>
+	</target>
+	
+	<target name="website.pack" depends="website.build">
+		<mkdir dir="dist" />
+		<tar destfile="dist/website.tar.bz2" compression="bzip2">
+			<tarfileset dir="build/website" excludes="download-edge.html" />
+		</tar>
+	</target>
+	
+	<target name="website.publish" depends="setup.ssh, website.pack" description="Builds the website, compresses it, sends it to the projectlombok.org server and deploys it">
+		<ivy:scpUpload
+			from="dist/website.tar.bz2"
+			to="/data/lombok/staging"
+			server="projectlombok.org"
+			username="${ssh.username}"
+			keyfile="${ssh.keyfile}"
+			knownHosts="ssh.knownHosts" />
+		<ivy:sshExec
+			cmd="/data/lombok/stagingCmd/deployWebsite"
+			server="projectlombok.org"
+			username="${ssh.username}"
+			keyfile="${ssh.keyfile}"
+			knownHosts="ssh.knownHosts" />
+	</target>
+	
+	<target name="javadoc.build" description="Generates the javadoc" depends="version, compile" unless="skip.javadoc">
+		<delete dir="build/api" quiet="true" />
+		<delete dir="doc/api" quiet="true" />
+		<mkdir dir="build/api" />
+		<property name="javadoc.overview.html" location="build/javadoc.overview.html" />
+		<echo file="${javadoc.overview.html}"><![CDATA[<html><body>
+			Welcome to the lombok javadoc.&nbsp;If you're just looking to learn more about using lombok
+			You probably want to look at <a href="https://projectlombok.org/features/all">the feature documentation</a>.&nbsp;Otherwise,
+			check the <a href="lombok/package-summary.html">lombok</a> package.&nbsp;If you're trying to extend lombok or
+			write your own plugins, the other packages are what you're looking for.</body></html>
+		]]></echo>
+		<tstamp>
+			<format property="javadoc.year" pattern="yyyy" />
+		</tstamp>
+		<javadoc sourcepath="src/core" defaultexcludes="yes" destdir="build/api" windowtitle="Lombok" source="1.8" Overview="${javadoc.overview.html}">
+			<package name="lombok" />
+			<package name="lombok.experimental" />
+			<package name="lombok.extern.*" />
+			<classpath location="build/lombok-main" />
+			<classpath location="build/lombok-utils" />
+			<header><![CDATA[<a href='https://projectlombok.org/' target='_blank'>Lombok</a> - ]]>v${lombok.version}</header>
+			<bottom><![CDATA[<i>Copyright &copy; 2009-${javadoc.year} The Project Lombok Authors, licensed under the <a href='http://www.opensource.org/licenses/mit-license.php' target='_blank'>MIT licence</a>.</i>]]></bottom>
+		</javadoc>
+		<!-- bugfix for boneheaded javadoc bug where ?is-external=true is inserted before an anchor ref, breaking the anchor ref.
+		is-external=true doesn't actually do anything except mess with titles, so, we'll just get rid of it. -->
+		<replaceregexp match="\?is-external=true#" replace="#" flags="gi">
+			<fileset dir="build/api" includes="**/*.html" />
+		</replaceregexp>
+		<mkdir dir="doc/api" />
+		<copy todir="doc/api">
+			<fileset dir="build/api" includes="**/*.html" />
+			<filterchain>
+				<linecontainsregexp negate="true">
+					<regexp pattern="(Generated by javadoc)|(.META NAME=.date.)|(meta name=.dc.created.)" />
+				</linecontainsregexp>
+			</filterchain>
+		</copy>
+		<copy todir="doc/api">
+			<fileset dir="build/api" includes="**/*.css" />
+			<filterchain>
+				<linecontainsregexp negate="true">
+					<regexp pattern="@import.*dejavu.css.*" />
+				</linecontainsregexp>
+			</filterchain>
+		</copy>
+		<copy todir="doc/api">
+			<fileset dir="build/api">
+				<exclude name="**/*.html" />
+				<exclude name="**/*.css" />
+			</fileset>
+		</copy>
+		<echo append="true" file="doc/api/module-search-index.js"></echo>
+		<echo append="true" file="doc/api/tag-search-index.js"></echo>
+	</target>
+	
+	<target name="javadoc.pack" depends="javadoc.build">
+		<mkdir dir="dist" />
+		<tar destfile="dist/javadoc.tar.bz2" compression="bzip2">
+			<tarfileset dir="build/api" />
+		</tar>
+		<echo>File dist/javadoc.tar.bz2 is available</echo>
+	</target>
+	
+	<target name="javadoc.publish" depends="setup.ssh, javadoc.pack">
+		<ivy:scpUpload
+			from="dist/javadoc.tar.bz2"
+			to="/data/lombok/staging"
+			server="projectlombok.org"
+			username="${ssh.username}"
+			keyfile="${ssh.keyfile}"
+			knownHosts="ssh.knownHosts" />
+		<ivy:sshExec
+			cmd="/data/lombok/stagingCmd/deployJavadoc"
+			server="projectlombok.org"
+			username="${ssh.username}"
+			keyfile="${ssh.keyfile}"
+			knownHosts="ssh.knownHosts" />
+	</target>
+	
+	<target name="latest-changes.build" depends="compile.support, version" description="Creates the latest changes HTML file from the markdown in doc/changelog">
+		<mkdir dir="build/website" />
+		<java classname="lombok.website.WebsiteMaker" failonerror="true">
+			<classpath>
+				<path refid="cp.buildtools" />
+				<pathelement location="build/support" />
+			</classpath>
+			<arg value="${web.root}" />
+			<arg value="${lombok.version}" />
+			<arg value="${lombok.fullversion}" />
+			<arg value="changelog-latest" />
+			<arg value="website" />
+			<arg value="build/latestchanges.html" />
+		</java>
+	</target>
+	
+	<target name="release.pack" depends="dist, website.release-build">
+		<tar destfile="dist/website-release.tar.bz2" compression="bzip2">
+			<tarfileset dir="dist" includes="lombok-${lombok.version}.jar" prefix="downloads/" />
+			<tarfileset dir="dist" includes="lombok-${lombok.version}.jar" fullpath="downloads/lombok.jar" />
+			<tarfileset dir="dist" includes="lombok-${lombok.version}.jar" fullpath="lombok-edge.jar" />
+			<tarfileset dir="build/website" includes="all-versions.html,download.html,download-edge.html" />
+		</tar>
+	</target>
+	
+	<target name="-release.publish.site" depends="setup.ssh, release.pack">
+		<ivy:scpUpload
+			from="dist/website-release.tar.bz2"
+			to="/data/lombok/staging"
+			server="projectlombok.org"
+			username="${ssh.username}"
+			keyfile="${ssh.keyfile}"
+			knownHosts="ssh.knownHosts" />
+		<ivy:sshExec
+			cmd="/data/lombok/stagingCmd/deployRelease"
+			server="projectlombok.org"
+			username="${ssh.username}"
+			keyfile="${ssh.keyfile}"
+			knownHosts="ssh.knownHosts" />
+	</target>
+	
+	<target name="release.publish" depends="maven, -release.publish.site, website.publish, eclipsep2.publish, maven.publish" description="Deploys a new official lombok release everywhere: maven, website, p2 site" />
+	
+	<target name="edge.pack" depends="compile.support, version, dist, maven.edge">
+		<delete file="build/website/download-edge.html" />
+		<mkdir dir="build/website-edge" />
+		<java classname="lombok.website.WebsiteMaker" failonerror="true">
+			<classpath>
+				<path refid="cp.buildtools" />
+				<pathelement location="build/support" />
+			</classpath>
+			<arg value="${web.root}" />
+			<arg value="${lombok.version}" />
+			<arg value="${lombok.fullversion}" />
+			<arg value="download-edge" />
+			<arg value="website" />
+			<arg value="build/website-edge/download-edge.html" />
+		</java>
+		<copy file="dist/lombok.jar" tofile="build/website-edge/lombok-edge.jar" />
+		<tar destfile="dist/website-edge.tar.bz2" compression="bzip2">
+			<tarfileset dir="build/website-edge" />
+			<tarfileset dir="build">
+				<include name="edge-releases/**" />
+			</tarfileset>
+		</tar>
+	</target>
+	
+	<target name="edge.publish" depends="setup.ssh, edge.pack" description="Builds an edge release, sends it to the projectlombok.org server and deploys it by updating the download-edge link">
+		<ivy:scpUpload
+			from="dist/website-edge.tar.bz2"
+			to="/data/lombok/staging"
+			server="projectlombok.org"
+			username="${ssh.username}"
+			keyfile="${ssh.keyfile}"
+			knownHosts="ssh.knownHosts" />
+		<ivy:sshExec
+			cmd="/data/lombok/stagingCmd/deployEdge"
+			server="projectlombok.org"
+			username="${ssh.username}"
+			keyfile="${ssh.keyfile}"
+			knownHosts="ssh.knownHosts" />
+		
+		<exec executable="/usr/bin/git" failonerror="true">
+			<arg value="merge-base" />
+			<arg value="--is-ancestor" />
+			<arg value="edge" />
+			<arg value="master" />
+		</exec>
+		<exec executable="/usr/bin/git">
+			<arg value="branch" />
+			<arg value="-f" />
+			<arg value="edge" />
+			<arg value="master" />
+		</exec>
+		<exec executable="/usr/bin/git">
+			<arg value="push" />
+			<arg value="origin" />
+			<arg value="edge:refs/heads/edge" />
+		</exec>
+	</target>
+</project>
