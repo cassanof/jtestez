@@ -1,5 +1,3 @@
-import lombok.ToString;
-
 // to represent a list of strings in a document
 interface ILoString {
   // to return the length of the list
@@ -319,7 +317,6 @@ class Trigram {
 }
 
 // to represent an empty list of strings in a document
-@ToString
 class MtLoString implements ILoString {
 
   /*
@@ -348,7 +345,6 @@ class MtLoString implements ILoString {
 }
 
 // to represent a non-empty list of strings in a document
-@ToString
 class ConsLoString implements ILoString {
   String first;
   ILoString rest;
@@ -424,47 +420,5 @@ class Utils {
           "The given word is an empty string, thus it is invalid for a trigram");
     }
     return s;
-  }
-}
-
-class BetterToString {
-  public static <T> String make(T obj) {
-    if (obj instanceof String) {
-      // // TODO: actually do the conversion
-      // return "\"" + obj.toString() + "\"";
-      String buffer = "";
-      char[] chars = ((String) obj).toCharArray();
-      for (char c : chars) {
-        switch (c) {
-        case '\t':
-          buffer += "\\" + "t";
-          break;
-        case '\b':
-          buffer += "\\" + "b";
-          break;
-        case '\n':
-          buffer += "\\" + "n";
-          break;
-        case '\r':
-          buffer += "\\" + "r";
-          break;
-        case '\f':
-          buffer += "\\" + "f";
-          break;
-        case '\'':
-        case '\"':
-        case '\\':
-          buffer += "\\" + c;
-          break;
-        default:
-          buffer += c;
-          break;
-        }
-      }
-      return "\"" + buffer + "\"";
-    }
-    else {
-      return obj.toString();
-    }
   }
 }
