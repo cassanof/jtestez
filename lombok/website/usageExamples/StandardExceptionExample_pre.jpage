@@ -1,5 +1,0 @@
-import lombok.experimental.StandardException;
-
-@StandardException
-public class ExampleException extends Exception {
-}

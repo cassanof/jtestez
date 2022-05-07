@@ -1,5 +1,0 @@
-new_local_repository(
-    name = "lombok_jar",
-    path = "/workspace/classpath",
-    build_file = "BUILD.lombok",
-)

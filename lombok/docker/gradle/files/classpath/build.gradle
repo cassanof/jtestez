@@ -1,6 +1,0 @@
-apply plugin: 'java'
-
-dependencies {
-	compileOnly files('lombok.jar')
-	annotationProcessor files('lombok.jar')
-}
