@@ -15,9 +15,8 @@ import (
 )
 
 type SourceContext struct {
-	DirPath     string
-	TempdirPath string
-	FileNames   []string
+	Dir   string
+	Names []string
 }
 
 //go:embed assets/imports.txt
@@ -80,9 +79,8 @@ func GenContext(fp string) SourceContext {
 	}
 
 	return SourceContext{
-		DirPath:     fullpath,
-		TempdirPath: tmpdir,
-		FileNames:   filenames,
+		Dir:   tmpdir,
+		Names: filenames,
 	}
 }
 
@@ -95,7 +93,7 @@ func (ctx SourceContext) Run() {
 // runs jshell on the files
 func (ctx SourceContext) jshell() {
 	// create process
-	jshell := exec.Command("jshell", ctx.getAllFilePaths(ctx.TempdirPath+"/delomboked")...)
+	jshell := exec.Command("jshell", ctx.getAllFilePaths(ctx.Dir+"/delomboked")...)
 
 	// get pipe to stdin
 	stdin, err := jshell.StdinPipe()
@@ -126,11 +124,11 @@ func (ctx SourceContext) jshell() {
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
-		b, err := reader.ReadByte()
+		r, _, err := reader.ReadRune()
 		if err != nil { // io.EOF
 			break
 		}
-		io.WriteString(stdin, string(b))
+		io.WriteString(stdin, string(r))
 	}
 
 	jshell.Wait()
@@ -138,7 +136,7 @@ func (ctx SourceContext) jshell() {
 
 // runs delombok to all the files in the temp dir
 func (ctx SourceContext) delombok() {
-	lombokPath := ctx.TempdirPath + "/lombok.jar"
+	lombokPath := ctx.Dir + "/lombok.jar"
 
 	// write the lombok jar to the dir
 	err := ioutil.WriteFile(lombokPath, lombokJarData, 0744)
@@ -147,12 +145,12 @@ func (ctx SourceContext) delombok() {
 	}
 
 	// get all files with abs path
-	filepaths := ctx.getAllFilePaths(ctx.TempdirPath)
+	filepaths := ctx.getAllFilePaths(ctx.Dir)
 
 	// buildings the args...
 	args := []string{"-jar", lombokPath, "delombok"}
 	args = append(args, filepaths...)
-	args = append(args, "-d", ctx.TempdirPath+"/delomboked")
+	args = append(args, "-d", ctx.Dir+"/delomboked")
 
 	// run the jar to all the files, output to src-delombok
 	err = exec.Command("java", args...).Run()
@@ -164,11 +162,11 @@ func (ctx SourceContext) delombok() {
 // writes the lombok annotations to each class in the files
 func (ctx SourceContext) writeAnnot() {
 	var wg sync.WaitGroup
-	for _, name := range ctx.FileNames {
+	for _, name := range ctx.Names {
 		wg.Add(1)
 		// it makes it asynchronous
 		go func(name string) {
-			fpath := ctx.TempdirPath + "/" + name
+			fpath := ctx.Dir + "/" + name
 			// read the file, split it into an array of lines
 			file, err := os.OpenFile(fpath, os.O_RDWR, 0655)
 			if err != nil {
@@ -232,7 +230,7 @@ func (ctx SourceContext) writeAnnot() {
 // helper that retuns all absolute filepaths from the given dir (including BetterToString)
 func (ctx SourceContext) getAllFilePaths(dir string) []string {
 	filepaths := make([]string, 0)
-	for _, name := range append(ctx.FileNames, "BetterToString.java") {
+	for _, name := range append(ctx.Names, "BetterToString.java") {
 		filepaths = append(filepaths, dir+"/"+name)
 	}
 	return filepaths

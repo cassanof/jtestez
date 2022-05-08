@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	a := lib.GenContext(os.Args[1])
-	fmt.Printf("dirpath: %s\ntempdir: %s\nfiles: %v", a.DirPath, a.TempdirPath, a.FileNames)
-	a.Run()
+	sources := lib.GenContext(os.Args[1])
+	fmt.Printf("tempdir: %s\nfiles: %v\n", sources.Dir, sources.Names)
+	sources.Run()
 }
