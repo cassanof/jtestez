@@ -12,8 +12,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-
-	"github.com/chzyer/readline"
 )
 
 type SourceContext struct {
@@ -125,18 +123,14 @@ func (ctx SourceContext) jshell() {
 	io.WriteString(stdin, "/set truncation jtestez 100000000\n")
 	io.WriteString(stdin, "/set feedback jtestez\n")
 
-	rl, err := readline.New("jshell> ")
-	if err != nil {
-		panic(err)
-	}
-	defer rl.Close()
+	reader := bufio.NewReader(os.Stdin)
 
 	for {
-		line, err := rl.Readline()
+		b, err := reader.ReadByte()
 		if err != nil { // io.EOF
 			break
 		}
-		io.WriteString(stdin, line+"\n")
+		io.WriteString(stdin, string(b))
 	}
 
 	jshell.Wait()
