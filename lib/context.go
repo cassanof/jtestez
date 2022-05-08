@@ -30,18 +30,9 @@ var btsData []byte
 
 // generates the context by reading the java files in the given
 // directory and creates the temporary directory with the files copied over.
-func GenContext(fp string) SourceContext {
-	entries, err := os.ReadDir(fp)
-	if err != nil {
-		// TODO: do better error handling
-		log.Fatal(err)
-	}
-
-	// TODO: fix
-	fullpath, err := filepath.Abs(fp)
-	if err != nil {
-		// TODO: do better error handling
-		log.Fatal(err)
+func GenContext(fps ...string) SourceContext {
+	if len(fps) <= 0 {
+		log.Fatal("GenContext was given 0 file paths")
 	}
 
 	// create temp tmpdir
@@ -56,25 +47,37 @@ func GenContext(fp string) SourceContext {
 		log.Fatal(err)
 	}
 
-	// get file names, and copy over files
 	var filenames []string
-	for _, entry := range entries {
-		name := entry.Name()
-		if strings.LastIndex(name, ".java") == (len(name) - 5) {
-			tmppath := tmpdir + "/" + name
-			realpath := fullpath + "/" + name
+	for _, fp := range fps {
+		entries, err := os.ReadDir(fp)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-			input, err := ioutil.ReadFile(realpath)
-			if err != nil {
-				log.Fatal(err)
+		fullpath, err := filepath.Abs(fp)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// get file names, and copy over files
+		for _, entry := range entries {
+			name := entry.Name()
+			if strings.LastIndex(name, ".java") == (len(name) - 5) {
+				tmppath := tmpdir + "/" + name
+				realpath := fullpath + "/" + name
+
+				input, err := ioutil.ReadFile(realpath)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				err = ioutil.WriteFile(tmppath, append(importsData, input...), 0655)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				filenames = append(filenames, name)
 			}
-
-			err = ioutil.WriteFile(tmppath, append(importsData, input...), 0655)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			filenames = append(filenames, name)
 		}
 	}
 
