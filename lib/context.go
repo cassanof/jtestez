@@ -95,8 +95,10 @@ func (ctx SourceContext) Run() {
 
 // runs jshell on the files
 func (ctx SourceContext) jshell() {
+	args := []string{"--class-path", ctx.Dir + "/lombok.jar"}
+	args = append(args, ctx.getAllFilePaths(ctx.Dir+"/delomboked")...)
 	// create process
-	jshell := exec.Command("jshell", ctx.getAllFilePaths(ctx.Dir+"/delomboked")...)
+	jshell := exec.Command("jshell", args...)
 
 	// get pipe to stdin
 	stdin, err := jshell.StdinPipe()
