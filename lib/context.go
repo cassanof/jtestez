@@ -3,13 +3,17 @@ package lib
 import (
 	"bufio"
 	_ "embed"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/chzyer/readline"
 )
 
 type SourceContext struct {
@@ -49,6 +53,12 @@ func GenContext(fp string) SourceContext {
 		log.Fatal(err)
 	}
 
+	// add BetterToString to the dir
+	err = ioutil.WriteFile(tmpdir+"/BetterToString.java", btsData, 0655)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// get file names, and copy over files
 	var filenames []string
 	for _, entry := range entries {
@@ -62,7 +72,7 @@ func GenContext(fp string) SourceContext {
 				log.Fatal(err)
 			}
 
-			err = ioutil.WriteFile(tmppath, append(append(importsData, input...), btsData...), 0655)
+			err = ioutil.WriteFile(tmppath, append(importsData, input...), 0655)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -78,18 +88,93 @@ func GenContext(fp string) SourceContext {
 	}
 }
 
-func (s SourceContext) Run() {
-	s.writeAnnot()
+func (ctx SourceContext) Run() {
+	ctx.writeAnnot()
+	ctx.delombok()
+	ctx.jshell()
+}
+
+// runs jshell on the files
+func (ctx SourceContext) jshell() {
+	// create process
+	jshell := exec.Command("jshell", ctx.getAllFilePaths(ctx.TempdirPath+"/delomboked")...)
+
+	// get pipe to stdin
+	stdin, err := jshell.StdinPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer stdin.Close()
+
+	// redirect stdout and stderr
+	jshell.Stdout = os.Stdout
+	jshell.Stderr = os.Stderr
+
+	// concurrently start jshell
+	err = jshell.Start()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// SETTINGS:
+	// /set mode jtestez normal -command
+	// /set truncation jtestez 100000000
+	// /set feedback jtestez
+
+	io.WriteString(stdin, "/set mode jtestez normal -command\n")
+	io.WriteString(stdin, "/set truncation jtestez 100000000\n")
+	io.WriteString(stdin, "/set feedback jtestez\n")
+
+	rl, err := readline.New("jshell> ")
+	if err != nil {
+		panic(err)
+	}
+	defer rl.Close()
+
+	for {
+		line, err := rl.Readline()
+		if err != nil { // io.EOF
+			break
+		}
+		io.WriteString(stdin, line+"\n")
+	}
+
+	jshell.Wait()
+}
+
+// runs delombok to all the files in the temp dir
+func (ctx SourceContext) delombok() {
+	lombokPath := ctx.TempdirPath + "/lombok.jar"
+
+	// write the lombok jar to the dir
+	err := ioutil.WriteFile(lombokPath, lombokJarData, 0744)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// get all files with abs path
+	filepaths := ctx.getAllFilePaths(ctx.TempdirPath)
+
+	// buildings the args...
+	args := []string{"-jar", lombokPath, "delombok"}
+	args = append(args, filepaths...)
+	args = append(args, "-d", ctx.TempdirPath+"/delomboked")
+
+	// run the jar to all the files, output to src-delombok
+	err = exec.Command("java", args...).Run()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 // writes the lombok annotations to each class in the files
-func (s SourceContext) writeAnnot() {
+func (ctx SourceContext) writeAnnot() {
 	var wg sync.WaitGroup
-	for _, name := range s.FileNames {
+	for _, name := range ctx.FileNames {
 		wg.Add(1)
 		// it makes it asynchronous
 		go func(name string) {
-			fpath := s.TempdirPath + "/" + name
+			fpath := ctx.TempdirPath + "/" + name
 			// read the file, split it into an array of lines
 			file, err := os.OpenFile(fpath, os.O_RDWR, 0655)
 			if err != nil {
@@ -116,9 +201,6 @@ func (s SourceContext) writeAnnot() {
 					indexes = append(indexes, i)
 				}
 			}
-
-			// remove the BetterToString class from indexes.
-			indexes = indexes[:len(indexes)-1]
 
 			// write @ToString annot to to each line before class
 			for counter, i := range indexes {
@@ -151,4 +233,13 @@ func (s SourceContext) writeAnnot() {
 		}(name)
 	}
 	wg.Wait()
+}
+
+// helper that retuns all absolute filepaths from the given dir (including BetterToString)
+func (ctx SourceContext) getAllFilePaths(dir string) []string {
+	filepaths := make([]string, 0)
+	for _, name := range append(ctx.FileNames, "BetterToString.java") {
+		filepaths = append(filepaths, dir+"/"+name)
+	}
+	return filepaths
 }

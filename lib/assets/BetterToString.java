@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+
 class BetterToString {
   public static <T> String make(T obj) {
     if (obj instanceof String) {
