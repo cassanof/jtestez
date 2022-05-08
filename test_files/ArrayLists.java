@@ -19,3 +19,7 @@ class ArrCycle {
     this.s = s;
   }
 }
+
+class ExamplesArrList {
+  ArrList c = new ArrList(new ArrayList<>(Arrays.asList("a", "abs", "dfs")), 1);
+}
