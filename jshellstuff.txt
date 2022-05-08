@@ -1,3 +1,0 @@
-/set mode jtestez normal -command
-/set truncation jtestez 100000000
-/set feedback jtestez
