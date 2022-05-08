@@ -21,7 +21,7 @@ Imagine writing all that out manually... We actually did... For a whole semester
 
 #### How to build
 Firstly, you will need:
- - Go 1.16 (or newer) installed
+ - Go 1.18 (or newer) installed
  - JDK 11 (or newer) installed
  - jshell installed (it should come with JDK)
 

@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"syscall"
 )
 
 type SourceContext struct {
@@ -92,6 +93,19 @@ func (ctx SourceContext) Run() {
 
 // runs jshell on the files
 func (ctx SourceContext) jshell() {
+	// find absolute path for jshell
+	path, err := exec.LookPath("jshell")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = syscall.Exec(path, ctx.getAllFilePaths(ctx.Dir+"/delomboked"), []string{})
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func (ctx SourceContext) jshellOld() {
 	// create process
 	jshell := exec.Command("jshell", ctx.getAllFilePaths(ctx.Dir+"/delomboked")...)
 
@@ -121,17 +135,11 @@ func (ctx SourceContext) jshell() {
 	io.WriteString(stdin, "/set truncation jtestez 100000000\n")
 	io.WriteString(stdin, "/set feedback jtestez\n")
 
-	reader := bufio.NewReader(os.Stdin)
-
+	var b []byte = make([]byte, 1)
 	for {
-		r, _, err := reader.ReadRune()
-		if err != nil { // io.EOF
-			break
-		}
-		io.WriteString(stdin, string(r))
+		os.Stdin.Read(b)
+		io.WriteString(stdin, string(b))
 	}
-
-	jshell.Wait()
 }
 
 // runs delombok to all the files in the temp dir
