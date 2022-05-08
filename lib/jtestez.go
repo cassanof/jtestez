@@ -2,7 +2,6 @@ package lib
 
 import (
 	"bufio"
-	_ "embed"
 	"io"
 	"io/ioutil"
 	"log"
@@ -19,15 +18,6 @@ type SourceContext struct {
 	Names []string
 }
 
-//go:embed assets/imports.txt
-var importsData []byte
-
-//go:embed assets/lombok.jar
-var lombokJarData []byte
-
-//go:embed assets/BetterToString.java
-var btsData []byte
-
 // generates the context by reading the java files in the given
 // directory and creates the temporary directory with the files copied over.
 func GenContext(fps ...string) SourceContext {
@@ -42,7 +32,7 @@ func GenContext(fps ...string) SourceContext {
 	}
 
 	// add BetterToString to the dir
-	err = ioutil.WriteFile(tmpdir+"/BetterToString.java", btsData, 0655)
+	err = ioutil.WriteFile(tmpdir+"/BetterToString.java", BtsData, 0655)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -71,7 +61,7 @@ func GenContext(fps ...string) SourceContext {
 					log.Fatal(err)
 				}
 
-				err = ioutil.WriteFile(tmppath, append(importsData, input...), 0655)
+				err = ioutil.WriteFile(tmppath, append(ImportsData, input...), 0655)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -95,7 +85,9 @@ func (ctx SourceContext) Run() {
 
 // runs jshell on the files
 func (ctx SourceContext) jshell() {
-	args := []string{"--class-path", ctx.Dir + "/lombok.jar"}
+	classpath := tryGetClasspath()
+
+	args := []string{"--class-path", classpath + ctx.Dir + "/lombok.jar"}
 	args = append(args, ctx.getAllFilePaths(ctx.Dir+"/delomboked")...)
 	// create process
 	jshell := exec.Command("jshell", args...)
@@ -138,7 +130,7 @@ func (ctx SourceContext) delombok() {
 	lombokPath := ctx.Dir + "/lombok.jar"
 
 	// write the lombok jar to the dir
-	err := ioutil.WriteFile(lombokPath, lombokJarData, 0744)
+	err := ioutil.WriteFile(lombokPath, LombokJarData, 0744)
 	if err != nil {
 		log.Fatal(err)
 	}
