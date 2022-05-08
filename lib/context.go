@@ -3,7 +3,6 @@ package lib
 import (
 	"bufio"
 	_ "embed"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -102,43 +101,6 @@ func (ctx SourceContext) jshell() {
 	err = syscall.Exec(path, ctx.getAllFilePaths(ctx.Dir+"/delomboked"), []string{})
 	if err != nil {
 		log.Fatal(err)
-	}
-}
-
-func (ctx SourceContext) jshellOld() {
-	// create process
-	jshell := exec.Command("jshell", ctx.getAllFilePaths(ctx.Dir+"/delomboked")...)
-
-	// get pipe to stdin
-	stdin, err := jshell.StdinPipe()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer stdin.Close()
-
-	// redirect stdout and stderr
-	jshell.Stdout = os.Stdout
-	jshell.Stderr = os.Stderr
-
-	// concurrently start jshell
-	err = jshell.Start()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// SETTINGS:
-	// /set mode jtestez normal -command
-	// /set truncation jtestez 100000000
-	// /set feedback jtestez
-
-	io.WriteString(stdin, "/set mode jtestez normal -command\n")
-	io.WriteString(stdin, "/set truncation jtestez 100000000\n")
-	io.WriteString(stdin, "/set feedback jtestez\n")
-
-	var b []byte = make([]byte, 1)
-	for {
-		os.Stdin.Read(b)
-		io.WriteString(stdin, string(b))
 	}
 }
 
