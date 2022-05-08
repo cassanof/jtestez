@@ -188,9 +188,9 @@ func (ctx SourceContext) writeAnnot() {
 				}
 			}
 
-			// write @ToString annot to to each line before class
+			// write @Data annot to to each line before class
 			for counter, i := range indexes {
-				annot := []byte("@ToString")
+				annot := []byte("@Data")
 				lines = append(lines[:i+1+counter], lines[i+counter:]...)
 				lines[i+counter] = annot
 			}
