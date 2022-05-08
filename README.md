@@ -17,6 +17,7 @@ abc ==> new ConsLoString("a", new ConsLoString("b", new ConsLoString("c", new Mt
 jshell> abc.toUpperCase()
 abc.toUpperCase()$13 ==> new ConsLoString("A", new ConsLoString("B", new ConsLoString("C", new MtLoString())))
 ```
+Imagine writing all that out manually... We actually did... For a whole semester...
 
 #### How to build
 Firstly, you will need:
