@@ -3,6 +3,13 @@
 
 package lib
 
+import (
+	"io"
+	"log"
+	"os"
+	"os/exec"
+)
+
 // runs jshell on the files
 func (ctx SourceContext) jshell() {
 	classpath := tryGetClasspath()
