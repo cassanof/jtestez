@@ -4,7 +4,6 @@
 package lib
 
 import (
-	"fmt"
 	"log"
 	"os/exec"
 	"syscall"
@@ -20,8 +19,6 @@ func (ctx SourceContext) jshell() {
 	}
 
 	paths := append([]string{""}, ctx.getAllFilePaths(ctx.Dir+"/delomboked")...)
-
-	fmt.Println(paths)
 
 	syscall.Exec(jshellPath, paths, []string{"CLASSPATH=" + classpath + ":" + ctx.Dir + "/lombok.jar"})
 
