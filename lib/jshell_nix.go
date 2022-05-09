@@ -4,6 +4,7 @@
 package lib
 
 import (
+	"fmt"
 	"log"
 	"os/exec"
 	"syscall"
@@ -18,7 +19,11 @@ func (ctx SourceContext) jshell() {
 		log.Fatal(err)
 	}
 
-	syscall.Exec(jshellPath, ctx.getAllFilePaths(ctx.Dir+"/delomboked"), []string{"CLASSPATH=" + classpath + ":" + ctx.Dir + "/lombok.jar"})
+	paths := append([]string{""}, ctx.getAllFilePaths(ctx.Dir+"/delomboked")...)
+
+	fmt.Println(paths)
+
+	syscall.Exec(jshellPath, paths, []string{"CLASSPATH=" + classpath + ":" + ctx.Dir + "/lombok.jar"})
 
 	// SETTINGS:
 	// /set mode jtestez normal -command
