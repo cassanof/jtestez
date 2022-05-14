@@ -8,7 +8,14 @@ import (
 )
 
 func main() {
-	sources := lib.GenContext(os.Args[1:]...)
-	fmt.Printf("tempdir: %s\nfiles: %v\n", sources.Dir, sources.Names)
-	sources.Run()
+	// NOTE: if the first argument is "-p", then we are in project mode. otherwise source mode
+	if len(os.Args) > 1 && os.Args[1] == "-p" {
+		proj := lib.GenProjectContext(os.Args[2:]...)
+		fmt.Printf("MODE: PROJECT\ntempdir: %s\n", proj.Dir)
+		proj.Run()
+	} else {
+		sources := lib.GenSourceContext(os.Args[1:]...)
+		fmt.Printf("MODE: SOURCE\ntempdir: %s\nfiles: %v\n", sources.Dir, sources.Names)
+		sources.Run()
+	}
 }

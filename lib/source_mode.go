@@ -17,9 +17,7 @@ type SourceContext struct {
 	Names []string
 }
 
-// generates the context by reading the java files in the given
-// directory and creates the temporary directory with the files copied over.
-func GenContext(fps ...string) SourceContext {
+func GenSourceContext(fps ...string) SourceContext {
 	if len(fps) <= 0 {
 		log.Fatal("GenContext was given 0 file paths")
 	}

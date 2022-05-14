@@ -10,7 +10,7 @@ import (
 	"os/exec"
 )
 
-// runs jshell on the files
+// runs jshell on the files (in source mode)
 func (ctx SourceContext) jshell() {
 	classpath := tryGetClasspath()
 
